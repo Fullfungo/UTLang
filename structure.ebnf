@@ -1,0 +1,60 @@
+letter = ? a single letter ?;
+digit = ? a single digit ?;
+space = ? a single space character ?;
+end of line = ? a (sequence of) character(s) indicating new line ?;
+gap = {space | end of line};
+name = letter, {letter | digit | "_"};
+special name = ? one of reserved names ?;
+general name = name - special name;
+
+statement = (type definition | function definition | variable definitinon | import statement | ...), gap, ";";
+
+program = gap, {statement, gap};
+
+(* ex.: Int, List, Pair *)
+type name = general name;
+
+(* ex.: Int[], List[A], Pair[A,B]; bad ex.: Pair[A,A] *)
+type template = type name, gap,
+                "[",
+                    gap, [name, {gap, ",", gap, name}, gap],
+                "]";
+
+(* ex.: List[Int], Pair[Int, List[Int]] *)
+fully specialised type = type name, gap,
+                        "[",
+                            gap, [fully specialised type, {gap, ",", gap, fully specialised type}, gap],
+                        "]";
+
+(* ex.: Pair[A, Int], A; permissible ex.: List[Int] *)
+partially specialised type = name | 
+                            (type name, gap,
+                            "[",
+                                gap, [(name | partially specialised type) ,
+                                {gap, ",", gap, (name | partially specialised type)}, gap],
+                            "]");
+tag = name;
+
+(* ex.: Zero with [], Node with [Tree[A], Tree[A]], Leaf with [A] *)
+tagged definition = tag, gap, "with", gap,
+                    "[",
+                        gap, [partially specialised type, {gap, ",", gap, partially specialised type}, gap],
+                    "]";
+
+(* ex.: Stop with [] | Continue with [A, List[A]] *)
+type definition clause = [tagged definition, {gap, "|", gap, tagged definition}];
+
+(* ex.: List[A] = Stop with [] | Continue with [A, List[A]] *)
+type definition = type template, gap, "=", gap, type definition clause;
+
+
+...
+
+function definition = ...;
+match statement = ...;
+variable definitinon = ...;
+import statement = ...;
+
+block = ...;
+
+special value = numeric value | string value | list value | ...;
