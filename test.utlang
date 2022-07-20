@@ -1,0 +1,49 @@
+
+type Int = Zero | S with [Int];
+
+type List[A] = Stop | Tail with [A, List[A]];
+
+type Pair[A, B] = First with [A] | Second with [B];
+
+type Bool = True | False;
+
+type Void = None;
+type Empty = ;
+
+val x: Int = S (S (Zero)); // 2
+
+/*
+val x = S (S (Zero)); // S and Zero are unique, and of type Int (deduced)
+*/
+
+val y: List[Bool] = Tail (True, Tail (False, Stop)); // [True, False]
+
+function is_zero(a:Int) -> Bool = {
+    val r: Bool = match on (a){
+        case Zero: True;
+        case S (n): False;
+    }
+    return r;
+}
+
+function inc(a:Int) -> Int = {
+    val r: Int = S (a);
+    return r;
+}
+
+/*
+function inc(a:Int) = { // return type is deduced from `r`   vvvvv
+    val r = S (a); // a is Int, so unique S with [Int] is found, and of type Int (deduced)
+    return r;
+}
+*/
+
+function print(a:Int) -> Void = {
+    //magic
+    val small: Bool = is_zero(a); // is_zero(Int) is unique ()
+    return None;
+}
+
+function print[A](b: List[A]) -> Void = {
+    return None;
+}
