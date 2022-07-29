@@ -1,5 +1,7 @@
 #include <cctype>
 #include <algorithm>
+#include <functional>
+#include <numeric>
 #include "utlang_tokeniser.hpp"
 
 using namespace utlang::tokenisation;
@@ -11,53 +13,20 @@ constexpr bool is_general_name_like(const std::string_view input_text){
             not std::isdigit(static_cast<unsigned char>(input_text.front()));
 }
 
-token::token(const std::string_view input_text):
-    token_value(input_text),
-    is_ignored_name(                    input_text == token_value_ignored_name),
-    is_type_identifier(                 input_text == token_value_type_identifier),
-    is_variable_identifier(             input_text == token_value_variable_identifier),
-    is_match_expression_identifier(     input_text == token_value_match_expression_identifier),
-    is_match_case_identifier(           input_text == token_value_match_case_identifier),
-    is_match_case_introduction(         input_text == token_value_match_case_introduction),
-    is_function_type_builder(           input_text == token_value_function_type_builder),
-    is_type_constructor_list_separator( input_text == token_value_type_constructor_list_separator),
-    is_lambda_expression_identifier(    input_text == token_value_lambda_expression_identifier),
-    is_lambda_expression_introduction(  input_text == token_value_lambda_expression_introduction),
-    is_type_annotation(                 input_text == token_value_type_annotation),
-    is_definition_operator(             input_text == token_value_definition_operator),
-    is_grouping_bracket_left(           input_text == token_value_grouping_bracket_left),
-    is_grouping_bracket_right(          input_text == token_value_grouping_bracket_right),
-    is_block_bracket_left(              input_text == token_value_block_bracket_left),
-    is_block_bracket_right(             input_text == token_value_block_bracket_right),
-    is_statement_separator(             input_text == token_value_statement_separator){
-
-    is_general_name = is_general_name_like(input_text) and not 
-                     (is_ignored_name or 
-                      is_type_identifier or 
-                      is_variable_identifier or 
-                      is_match_expression_identifier or 
-                      is_match_case_identifier);
+token::token(const std::string_view input_text): token_value(input_text){
+    for (auto [a, b] : reserved_values)
+        this->*a = (input_text == b);
+    
+    is_general_name = is_general_name_like(input_text) and
+                      std::none_of(reserved_name_fields.cbegin(), reserved_name_fields.cend(), [](const bool b){return b;});
 }
 
 constexpr int token_possibilities_amount(const token &t){
-    return  t.is_general_name + 
-            t.is_ignored_name + 
-            t.is_type_identifier + 
-            t.is_variable_identifier + 
-            t.is_match_expression_identifier + 
-            t.is_match_case_identifier + 
-            t.is_match_case_introduction + 
-            t.is_function_type_builder + 
-            t.is_type_constructor_list_separator + 
-            t.is_lambda_expression_identifier + 
-            t.is_lambda_expression_introduction + 
-            t.is_type_annotation + 
-            t.is_definition_operator + 
-            t.is_grouping_bracket_left + 
-            t.is_grouping_bracket_right + 
-            t.is_block_bracket_left + 
-            t.is_block_bracket_right + 
-            t.is_statement_separator;
+    // std::transform_reduce(token::reserved_indicators.cbegin(), token::reserved_indicators.cend(), int{}, std::plus<int>{}, [&t](bool token::*p)->int{return t.*p;});
+    int possibilities{};
+    for (auto const p: token::reserved_fields)
+        possibilities += t.*p;
+    return possibilities;
 }
 
 constexpr bool token::is_not_determined() const{
@@ -77,12 +46,12 @@ bool symbol_is_space(char c){
     return std::isspace(static_cast<unsigned char>(c));
 }
 
-bool symbol_is_operator_like(char c){
-    return std::ispunct(static_cast<unsigned char>(c)) and c != '_';
-}
-
 bool symbol_is_name_like(char c){
     return std::isalnum(static_cast<unsigned char>(c)) or c == '_';
+}
+
+bool symbol_is_operator_like(char c){
+    return std::ispunct(static_cast<unsigned char>(c)) and c != '_';
 }
 
 enum class token_mode {none, name_like, operator_like, error};
@@ -90,10 +59,10 @@ enum class token_mode {none, name_like, operator_like, error};
 token_mode symbol_token_mode(char c){
     if (symbol_is_space(c))
         return token_mode::none;
-    if (symbol_is_operator_like(c))
-        return token_mode::operator_like;
     if (symbol_is_name_like(c))
         return token_mode::name_like;
+    if (symbol_is_operator_like(c))
+        return token_mode::operator_like;
     return token_mode::error;
 }
 

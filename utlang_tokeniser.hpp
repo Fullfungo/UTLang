@@ -3,34 +3,35 @@
 
 // #include <iostream>
 #include <vector>
+#include <array>
 // #include <optional>
-// #include <tuple>
+#include <tuple>
 // #include <variant>
 #include <string>
 #include <string_view>
+#include <algorithm>
 
-namespace utlang{
-namespace tokenisation{
+
+template<class T, typename std::array<T, 1>::size_type N, typename std::array<T, 1>::size_type M>
+constexpr auto combine_arrays(std::array<T, N> const &arr1, std::array<T, M> const &arr2){
+    std::array<T, N + M> res;
+    for (typename std::array<T, 1>::size_type i = 0; i < N; ++i)
+        res[i] = arr1[i];
+    for (typename std::array<T, 1>::size_type i = 0; i < M; ++i)
+        res[N + i] = arr2[i];
+    return res;
+}
+
+template<class T, class U, typename std::array<T, 1>::size_type N>
+constexpr auto member_fields_only(std::array<std::pair<T, U>, N> const &arr){
+    std::array<T, N> res;
+    std::transform(arr.cbegin(), arr.cend(), res.begin(), [](std::pair<T, U> const &pair){return pair.first;});
+    return res;
+}
+
+namespace utlang::tokenisation{
 
     using namespace std::string_view_literals;
-    constexpr auto token_value_ignored_name                    = "_"sv;
-    constexpr auto token_value_type_identifier                 = "type"sv;
-    constexpr auto token_value_variable_identifier             = "let"sv;
-    constexpr auto token_value_match_expression_identifier     = "match"sv;
-    constexpr auto token_value_match_case_identifier           = "case"sv;
-    constexpr auto token_value_match_case_introduction         = ":"sv;
-    constexpr auto token_value_function_type_builder           = "->"sv;
-    constexpr auto token_value_type_constructor_list_separator = "|"sv;
-    constexpr auto token_value_lambda_expression_identifier    = "\\"sv;
-    constexpr auto token_value_lambda_expression_introduction  = "->"sv;
-    constexpr auto token_value_type_annotation                 = ":"sv;
-    constexpr auto token_value_definition_operator             = "="sv;
-    constexpr auto token_value_grouping_bracket_left           = "("sv;
-    constexpr auto token_value_grouping_bracket_right          = ")"sv;
-    constexpr auto token_value_block_bracket_left              = "{"sv;
-    constexpr auto token_value_block_bracket_right             = "}"sv;
-    constexpr auto token_value_statement_separator             = ";"sv;
-
 
     class token{
         public:
@@ -41,6 +42,8 @@ namespace tokenisation{
             bool is_variable_identifier             = false;
             bool is_match_expression_identifier     = false;
             bool is_match_case_identifier           = false;
+            bool is_namespace_identifier            = false;
+            bool is_namespace_resolution_operator   = false;
             bool is_match_case_introduction         = false;
             bool is_function_type_builder           = false;
             bool is_type_constructor_list_separator = false;
@@ -59,11 +62,40 @@ namespace tokenisation{
             constexpr bool is_not_determined() const;
             constexpr bool is_uniquely_determined() const;
             constexpr bool is_nonuniquely_determined() const;
+        
+        public:            
+            static constexpr std::array reserved_name_values = {
+                std::make_pair(&token::is_ignored_name,                 "_"sv),
+                std::make_pair(&token::is_type_identifier,              "type"sv),
+                std::make_pair(&token::is_variable_identifier,          "let"sv),
+                std::make_pair(&token::is_match_expression_identifier,  "match"sv),
+                std::make_pair(&token::is_match_case_identifier,        "case"sv),
+                std::make_pair(&token::is_namespace_identifier,         "namespace"sv)
+            };
+            static constexpr std::array reserved_name_fields = member_fields_only(reserved_name_values);
+            
+            static constexpr std::array reserved_operator_values = {
+                std::make_pair(&token::is_namespace_resolution_operator,    "::"sv),
+                std::make_pair(&token::is_match_case_introduction,          ":"sv),
+                std::make_pair(&token::is_function_type_builder,            "->"sv),
+                std::make_pair(&token::is_type_constructor_list_separator,  "|"sv),
+                std::make_pair(&token::is_lambda_expression_identifier,     "\\"sv),
+                std::make_pair(&token::is_lambda_expression_introduction,   "->"sv),
+                std::make_pair(&token::is_type_annotation,                  ":"sv),
+                std::make_pair(&token::is_definition_operator,              "="sv),
+                std::make_pair(&token::is_grouping_bracket_left,            "("sv),
+                std::make_pair(&token::is_grouping_bracket_right,           ")"sv),
+                std::make_pair(&token::is_block_bracket_left,               "{"sv),
+                std::make_pair(&token::is_block_bracket_right,              "}"sv),
+                std::make_pair(&token::is_statement_separator,              ";"sv)
+            };
+            static constexpr std::array reserved_operator_fields = member_fields_only(reserved_operator_values);
+
+            static constexpr std::array reserved_values = combine_arrays(reserved_name_values, reserved_operator_values);
+            static constexpr std::array reserved_fields = member_fields_only(reserved_values);
     };
 
     std::vector<token> tokenise(const std::string_view input_text);
-
-}
 }
 
 #endif
