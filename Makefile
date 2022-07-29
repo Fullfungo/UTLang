@@ -1,5 +1,7 @@
 all:: build
 
+# gcc -v -E -x c++ -
+
 Compiler := g++
 
 Program_name := executable.exe
