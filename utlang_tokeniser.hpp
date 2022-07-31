@@ -62,6 +62,9 @@ namespace utlang::tokenisation{
             bool is_block_bracket_right             = false;
             bool is_statement_separator             = false;
 
+            // comment token
+            bool is_single_line_comment_identifier  = false;
+
         public:
             token(const std::string_view input_text);
             constexpr bool is_not_determined() const;
@@ -93,7 +96,9 @@ namespace utlang::tokenisation{
                 std::make_pair(&token::is_grouping_bracket_right,           ")"sv),
                 std::make_pair(&token::is_block_bracket_left,               "{"sv),
                 std::make_pair(&token::is_block_bracket_right,              "}"sv),
-                std::make_pair(&token::is_statement_separator,              ";"sv)
+                std::make_pair(&token::is_statement_separator,              ";"sv),
+                
+                std::make_pair(&token::is_single_line_comment_identifier,   "//"sv)
             };
             static constexpr std::array reserved_operator_fields = member_fields_only(reserved_operator_values);
 

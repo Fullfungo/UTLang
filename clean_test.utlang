@@ -1,9 +1,9 @@
-
+//;;;;;
 type Int = Zero | S Int;
 
-type List A = Stop | Tail A (List A);
+type List A = Stop | Tail A (List A);//kekw
 
-type Pair A B = First A | Second B;
+type Pair A B = First A | Second B; // lol
 
 type Bool = True | False;
 

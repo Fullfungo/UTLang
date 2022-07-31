@@ -42,8 +42,12 @@ constexpr bool token::is_nonuniquely_determined() const{
 }
 
 
-bool symbol_is_space(char c){
-    return std::isspace(static_cast<unsigned char>(c));
+bool symbol_is_space_like(char c){
+    return std::isspace(static_cast<unsigned char>(c)) and not (c == '\n' or c == '\v');
+}
+
+bool symbol_is_new_line_like(char c){
+    return c == '\n' or c == '\v';
 }
 
 bool symbol_is_name_like(char c){
@@ -54,27 +58,31 @@ bool symbol_is_operator_like(char c){
     return std::ispunct(static_cast<unsigned char>(c)) and c != '_';
 }
 
-enum class token_mode {none, name_like, operator_like, error};
+// enum class token_mode {empty, name_like, operator_like, error};
+enum class character_mode {error, name_like, operator_like, space_like, new_line_like};
+enum class token_mode {empty, name_like, operator_like, comment};
 
-token_mode symbol_token_mode(char c){
-    if (symbol_is_space(c))
-        return token_mode::none;
+character_mode symbol_token_mode(char c){
     if (symbol_is_name_like(c))
-        return token_mode::name_like;
+        return character_mode::name_like;
     if (symbol_is_operator_like(c))
-        return token_mode::operator_like;
-    return token_mode::error;
+        return character_mode::operator_like;
+    if (symbol_is_space_like(c))
+        return character_mode::space_like;
+    if (symbol_is_new_line_like(c))[[likely]]
+        return character_mode::new_line_like;
+    return character_mode::error;
 }
 
 namespace utlang::tokenisation{
 
 /*
-                    (symbol)    abc         ->;         ' '         '\n'
+                    (next symbol)   abc         ->;         ' '         '\n'
     (current_token) 
-    abc                         += c        push        push        push
-    ->;                         push        += c        push        push
-    ' '                         = c         = c         ignore      ignore
-    comment                     ignore      ignore      ignore      mode = NONE
+    abc                             += c        push; = c   push        push
+    ->;                             push; = c   += c        push        push
+    ' '                             = c         = c         ignore      ignore
+    comment                         ignore      ignore      ignore      mode = NONE
 
 */
 
@@ -84,14 +92,14 @@ std::vector<token> tokenise(const std::string_view input_text){
     
     auto token_stream = std::vector<token>{};
     auto current_token_text = std::string{};
-    auto current_token_mode = token_mode::none;
+    auto current_token_mode = token_mode::empty;
 
-    auto push_name_like_token = [](auto &token_stream, auto &current_token_text){
+    auto push_name_like_token = [&](){
         auto const new_token = token{current_token_text};
         token_stream.push_back(new_token);
     };
 
-    auto push_operator_like_tokens = [](auto &token_stream, auto &current_token_text){
+    auto push_operator_like_tokens = [&](){
         auto token_text = std::string_view{current_token_text}; // may contain multiple tokens ;;;
 
         while (not token_text.empty()){
@@ -105,7 +113,10 @@ std::vector<token> tokenise(const std::string_view input_text){
                 auto broken_token = token{token_text};
                 token_stream.push_back(broken_token);
                 break;
-            }else{ // continue with the rest of the text
+            }else if (possible_token.is_single_line_comment_identifier)[[unlikely]]{
+                current_token_mode = token_mode::comment;
+                break;
+            }else{ // token found; continue with the rest of the text
                 token_stream.push_back(possible_token);
                 token_text.remove_prefix(possible_operator_text.size());
             }
@@ -114,46 +125,123 @@ std::vector<token> tokenise(const std::string_view input_text){
 
     for (auto c : input_text){
         auto symbol_mode = symbol_token_mode(c);
-        if (symbol_mode == token_mode::error)[[unlikely]]{
-            throw 0;
-        }else if (current_token_mode == token_mode::none){ // possible start of a new token
-            switch (symbol_mode){
-                case token_mode::name_like:
-                case token_mode::operator_like:
-                    current_token_text = c;
-                    current_token_mode = symbol_mode;
-                    [[fallthrough]];
-                default:
-                    continue;
-            }
-        }else if (symbol_mode == current_token_mode)[[likely]]{ // token continuation
-            current_token_text += c;
-        }else if (current_token_mode == token_mode::name_like){ // end of name_like token
-            push_name_like_token(token_stream, current_token_text);
-            current_token_text.clear();
-            current_token_mode = symbol_mode;
-            if (symbol_mode != token_mode::none)
-                current_token_text = c;
-        }else{ // end of operator_like token(s)
-            push_operator_like_tokens(token_stream, current_token_text);
-            current_token_text.clear();
-            current_token_mode = symbol_mode;
-            if (symbol_mode != token_mode::none)
-                current_token_text = c;
+        switch (symbol_mode){
+            case character_mode::error:
+                throw 0;
+            case character_mode::name_like:{
+                switch (current_token_mode){
+                    case token_mode::name_like:
+                        current_token_text += c;
+                        break;
+                    case token_mode::operator_like:
+                        current_token_mode = token_mode::name_like;
+                        push_operator_like_tokens();
+                        current_token_text = c;
+                        break;
+                    case token_mode::empty:
+                        current_token_mode = token_mode::name_like;
+                        current_token_text = c;
+                        break;
+                    case token_mode::comment:
+                        break;
+                }
+            } break;
+            case character_mode::operator_like:{
+                switch (current_token_mode){
+                    case token_mode::name_like:
+                        current_token_mode = token_mode::operator_like;
+                        push_name_like_token();
+                        current_token_text = c;
+                        break;
+                    case token_mode::operator_like:
+                        current_token_text += c;
+                        break;
+                    case token_mode::empty:
+                        current_token_mode = token_mode::operator_like;
+                        current_token_text = c;
+                        break;
+                    case token_mode::comment:
+                        break;
+                }
+            } break;
+            case character_mode::space_like:{
+                switch (current_token_mode){
+                    case token_mode::name_like:
+                        current_token_mode = token_mode::empty;
+                        push_name_like_token();
+                        break;
+                    case token_mode::operator_like:
+                        current_token_mode = token_mode::empty;
+                        push_operator_like_tokens();
+                        break;
+                    case token_mode::empty:
+                        break;
+                    case token_mode::comment:
+                        break;
+                }
+            } break;
+            case character_mode::new_line_like:{
+                switch (current_token_mode){
+                    case token_mode::name_like:
+                        push_name_like_token();
+                        current_token_mode = token_mode::empty;
+                        break;
+                    case token_mode::operator_like:
+                        push_operator_like_tokens();
+                        current_token_mode = token_mode::empty; // mode is set last, since this is always the end of a comment
+                        break;
+                    case token_mode::empty:
+                        break;
+                    case token_mode::comment:
+                        current_token_mode = token_mode::empty;
+                        break;
+                }
+            } break;
         }
     }
-    if (not current_token_text.empty()){ // in case the file ends on a token
-        switch (current_token_mode){
-            case token_mode::name_like:
-                push_name_like_token(token_stream, current_token_text);
-                break;
-            case token_mode::operator_like: [[likely]]
-                push_operator_like_tokens(token_stream, current_token_text);
-                break;
-            default:
-                break;
-        }
-    }
+
+    // for (auto c : input_text){
+    //     auto symbol_mode = symbol_token_mode(c);
+    //     if (symbol_mode == token_mode::error)[[unlikely]]{
+    //         throw 0;
+    //     }else if (current_token_mode == token_mode::empty){ // possible start of a new token
+    //         switch (symbol_mode){
+    //             case token_mode::name_like:
+    //             case token_mode::operator_like:
+    //                 current_token_text = c;
+    //                 current_token_mode = symbol_mode;
+    //                 [[fallthrough]];
+    //             default:
+    //                 continue;
+    //         }
+    //     }else if (symbol_mode == current_token_mode)[[likely]]{ // token continuation
+    //         current_token_text += c;
+    //     }else if (current_token_mode == token_mode::name_like){ // end of name_like token
+    //         push_name_like_token(token_stream, current_token_text);
+    //         current_token_text.clear();
+    //         current_token_mode = symbol_mode;
+    //         if (symbol_mode != token_mode::empty)
+    //             current_token_text = c;
+    //     }else{ // end of operator_like token(s)
+    //         push_operator_like_tokens(token_stream, current_token_text);
+    //         current_token_text.clear();
+    //         current_token_mode = symbol_mode;
+    //         if (symbol_mode != token_mode::empty)
+    //             current_token_text = c;
+    //     }
+    // }
+    // if (not current_token_text.empty()){ // in case the file ends on a token
+    //     switch (current_token_mode){
+    //         case token_mode::name_like:
+    //             push_name_like_token(token_stream, current_token_text);
+    //             break;
+    //         case token_mode::operator_like: [[likely]]
+    //             push_operator_like_tokens(token_stream, current_token_text);
+    //             break;
+    //         default:
+    //             break;
+    //     }
+    // }
     return token_stream;
 }
 
