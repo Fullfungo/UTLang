@@ -36,6 +36,8 @@ namespace utlang::tokenisation{
     class token{
         public:
             std::string token_value;
+
+            // name-like tokens
             bool is_general_name                    = false;
             bool is_ignored_name                    = false;
             bool is_type_identifier                 = false;
@@ -43,6 +45,9 @@ namespace utlang::tokenisation{
             bool is_match_expression_identifier     = false;
             bool is_match_case_identifier           = false;
             bool is_namespace_identifier            = false;
+            bool is_import_identifier               = false;
+
+            // operator-like tokens
             bool is_namespace_resolution_operator   = false;
             bool is_match_case_introduction         = false;
             bool is_function_type_builder           = false;
@@ -70,7 +75,8 @@ namespace utlang::tokenisation{
                 std::make_pair(&token::is_variable_identifier,          "let"sv),
                 std::make_pair(&token::is_match_expression_identifier,  "match"sv),
                 std::make_pair(&token::is_match_case_identifier,        "case"sv),
-                std::make_pair(&token::is_namespace_identifier,         "namespace"sv)
+                std::make_pair(&token::is_namespace_identifier,         "namespace"sv),
+                std::make_pair(&token::is_import_identifier,            "import"sv)
             };
             static constexpr std::array reserved_name_fields = member_fields_only(reserved_name_values);
             

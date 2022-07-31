@@ -18,7 +18,7 @@ token::token(const std::string_view input_text): token_value(input_text){
         this->*a = (input_text == b);
     
     is_general_name = is_general_name_like(input_text) and
-                      std::none_of(reserved_name_fields.cbegin(), reserved_name_fields.cend(), [](const bool b){return b;});
+                      std::none_of(reserved_name_fields.cbegin(), reserved_name_fields.cend(), [this](const auto b){return this->*b;});
 }
 
 constexpr int token_possibilities_amount(const token &t){
@@ -66,6 +66,18 @@ token_mode symbol_token_mode(char c){
     return token_mode::error;
 }
 
+namespace utlang::tokenisation{
+
+/*
+                    (symbol)    abc         ->;         ' '         '\n'
+    (current_token) 
+    abc                         += c        push        push        push
+    ->;                         push        += c        push        push
+    ' '                         = c         = c         ignore      ignore
+    comment                     ignore      ignore      ignore      mode = NONE
+
+*/
+
 std::vector<token> tokenise(const std::string_view input_text){
     // characters: 1. spaces; 2. graphical; 3. controles[bad]
     // tokens: 1. names (a-z, A-Z, 0-9, _) 2. special operators
@@ -89,7 +101,7 @@ std::vector<token> tokenise(const std::string_view input_text){
                 possible_operator_text.remove_suffix(1);
                 possible_token = token{possible_operator_text};
             }
-            if (possible_token.is_not_determined()){ // return the broken token
+            if (possible_token.is_not_determined())[[unlikely]]{ // return the broken token
                 auto broken_token = token{token_text};
                 token_stream.push_back(broken_token);
                 break;
@@ -102,7 +114,7 @@ std::vector<token> tokenise(const std::string_view input_text){
 
     for (auto c : input_text){
         auto symbol_mode = symbol_token_mode(c);
-        if (symbol_mode == token_mode::error){
+        if (symbol_mode == token_mode::error)[[unlikely]]{
             throw 0;
         }else if (current_token_mode == token_mode::none){ // possible start of a new token
             switch (symbol_mode){
@@ -114,16 +126,20 @@ std::vector<token> tokenise(const std::string_view input_text){
                 default:
                     continue;
             }
-        }else if (symbol_mode == current_token_mode){ // token continuation
+        }else if (symbol_mode == current_token_mode)[[likely]]{ // token continuation
             current_token_text += c;
         }else if (current_token_mode == token_mode::name_like){ // end of name_like token
             push_name_like_token(token_stream, current_token_text);
             current_token_text.clear();
             current_token_mode = symbol_mode;
+            if (symbol_mode != token_mode::none)
+                current_token_text = c;
         }else{ // end of operator_like token(s)
             push_operator_like_tokens(token_stream, current_token_text);
             current_token_text.clear();
             current_token_mode = symbol_mode;
+            if (symbol_mode != token_mode::none)
+                current_token_text = c;
         }
     }
     if (not current_token_text.empty()){ // in case the file ends on a token
@@ -131,7 +147,7 @@ std::vector<token> tokenise(const std::string_view input_text){
             case token_mode::name_like:
                 push_name_like_token(token_stream, current_token_text);
                 break;
-            case token_mode::operator_like:
+            case token_mode::operator_like: [[likely]]
                 push_operator_like_tokens(token_stream, current_token_text);
                 break;
             default:
@@ -139,4 +155,6 @@ std::vector<token> tokenise(const std::string_view input_text){
         }
     }
     return token_stream;
+}
+
 }
