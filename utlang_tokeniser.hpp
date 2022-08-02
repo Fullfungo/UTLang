@@ -62,8 +62,10 @@ namespace utlang::tokenisation{
             bool is_block_bracket_right             = false;
             bool is_statement_separator             = false;
 
-            // comment token
-            bool is_single_line_comment_identifier  = false;
+            // // comment token
+            // bool is_single_line_comment_identifier  = false;
+            // bool is_block_comment_start             = false;
+            // bool is_block_comment_end               = false;
 
         public:
             token(const std::string_view input_text);
@@ -71,7 +73,7 @@ namespace utlang::tokenisation{
             constexpr bool is_uniquely_determined() const;
             constexpr bool is_nonuniquely_determined() const;
         
-        public:            
+        public:
             static constexpr std::array reserved_name_values = {
                 std::make_pair(&token::is_ignored_name,                 "_"sv),
                 std::make_pair(&token::is_type_identifier,              "type"sv),
@@ -97,13 +99,19 @@ namespace utlang::tokenisation{
                 std::make_pair(&token::is_block_bracket_left,               "{"sv),
                 std::make_pair(&token::is_block_bracket_right,              "}"sv),
                 std::make_pair(&token::is_statement_separator,              ";"sv),
-                
-                std::make_pair(&token::is_single_line_comment_identifier,   "//"sv)
+
+                // std::make_pair(&token::is_single_line_comment_identifier,   single_line_comment_identifier),
+                // std::make_pair(&token::is_block_comment_start,              block_comment_start),
+                // std::make_pair(&token::is_block_comment_end,                block_comment_end)
             };
             static constexpr std::array reserved_operator_fields = member_fields_only(reserved_operator_values);
 
             static constexpr std::array reserved_values = combine_arrays(reserved_name_values, reserved_operator_values);
             static constexpr std::array reserved_fields = member_fields_only(reserved_values);
+
+            constexpr static auto single_line_comment_identifier    = "//"sv;
+            constexpr static auto block_comment_start               = "/*"sv;
+            constexpr static auto block_comment_end                 = "*/"sv;
     };
 
     std::vector<token> tokenise(const std::string_view input_text);
