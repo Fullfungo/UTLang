@@ -5,22 +5,38 @@ type List A = Stop | Tail A (List A);//kekw
 
 type Pair A B = First A | Second B; // lol
 
-type Bool = True | False;
+/*;;;
+cool comment
+oof*/
 
-type Void = None;
-type Empty = ;
+type Bool = True | False;/*bruh*/
+
+type Void = /* explanation */ None;
+type Empty/*what?*/ = ;
 
 val x: Int = S (S (Zero));
 
 
-val y: List Bool = Tail True (Tail False Stop);
+val y: List Bool = Tail True (Tail False Stop);/**/
 
-let is_zero: Int -> Bool = \a -> match a {
+let is_zero: Int -> Bool = \a -> match /**/ a {
     case Zero: True;
     case S _: False;
 };
 
-let inc: Int -> Int = \x -> S x;
+/*
+
+
+
+*/
+
+/*
+
+more comment
+
+*/
+
+let inc: Int -> Int = \x -> S x;/*;;;;;;;*/
 
 let print: Int -> Void = {
     val small: Bool = is_zero a;
@@ -30,3 +46,4 @@ let print: Int -> Void = {
 let print: List A -> Void = None;
 
 
+//->

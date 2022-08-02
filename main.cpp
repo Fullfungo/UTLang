@@ -1,6 +1,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <chrono>
+#include <thread>
+#include "compiler_stream.hpp"
 #include "utlang_parser.hpp"
 
 std::string token_to_string(utlang::tokenisation::token const &t){
@@ -53,8 +56,35 @@ std::vector<std::string> tokenise_file(std::ifstream &file){
     return token_debug_info_stream;
 }
 
+int square(int x){
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+    return x*x;
+}
+
+auto get_sqares(int n){
+    auto int_str = utlang::object_pipeline<int>{};
+    for (auto i = 0; i < n; ++i)
+        int_str << i;
+    return int_str.transform(square);
+}
+
+auto get_list(int n){
+    auto int_list = utlang::object_pipeline<int>{};
+    for (auto i = 0; i < n; ++i)
+        int_list << i;
+    // std::this_thread::sleep_for(std::chrono::seconds(10));
+    return int_list;
+}
+
 int main(){
     std::ifstream file("clean_test.utlang");
     for (auto td: tokenise_file(file))
         std::cout << td << '\n';
+
+    // auto il = get_list(10);
+    // for (auto i: il.transform_and_combine(get_list).get())
+    //     std::cout << i << ' ';
+    /*// std::cout << '\n';
+    */
+    // /*
 };
