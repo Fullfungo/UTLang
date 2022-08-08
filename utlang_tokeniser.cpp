@@ -43,13 +43,13 @@ constexpr bool token::is_nonuniquely_determined() const{
 }
 
 
-bool symbol_is_space_like(char c){
-    return std::isspace(static_cast<unsigned char>(c)) and not (c == '\n' or c == '\v');
+bool symbol_is_new_line_like(char c){
+    return c == '\n' or c == '\r';
 }
 
-bool symbol_is_new_line_like(char c){
-    return c == '\n' or c == '\v';
-}
+// bool symbol_is_space_like(char c){
+//     return std::isspace(static_cast<unsigned char>(c)) and not symbol_is_new_line_like(c);
+// }
 
 bool symbol_is_name_like(char c){
     return std::isalnum(static_cast<unsigned char>(c)) or c == '_';
@@ -64,20 +64,20 @@ bool symbol_is_token_like(char c){
 }
 
 // enum class token_mode {empty, name_like, operator_like, error};
-enum class character_mode {error, name_like, operator_like, space_like, new_line_like};
-enum class token_mode {empty, name_like, operator_like, single_line_comment, block_comment};
+// enum class character_mode {error, name_like, operator_like, space_like, new_line_like};
+// enum class token_mode {empty, name_like, operator_like, single_line_comment, block_comment};
 
-character_mode symbol_token_mode(char c){
-    if (symbol_is_name_like(c))
-        return character_mode::name_like;
-    if (symbol_is_operator_like(c))
-        return character_mode::operator_like;
-    if (symbol_is_space_like(c))
-        return character_mode::space_like;
-    if (symbol_is_new_line_like(c))[[likely]]
-        return character_mode::new_line_like;
-    return character_mode::error;
-}
+// character_mode symbol_token_mode(char c){
+//     if (symbol_is_name_like(c))
+//         return character_mode::name_like;
+//     if (symbol_is_operator_like(c))
+//         return character_mode::operator_like;
+//     if (symbol_is_space_like(c))
+//         return character_mode::space_like;
+//     if (symbol_is_new_line_like(c))[[likely]]
+//         return character_mode::new_line_like;
+//     return character_mode::error;
+// }
 
 namespace utlang::tokenisation{
 

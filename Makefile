@@ -16,16 +16,17 @@ Dependency := $(patsubst %.cpp,%.d,$(Source_files))
 
 Supressing_flags := #-Wno-unused-value -Wno-error=unused-value -Wno-unused-parameter
 Sanitizer_flags  := #-fsanitize=undefined,address,leak
-Optimizing_flags := -O3
+Optimizing_flags_compile := -O3 -flto -fuse-linker-plugin -ffat-lto-objects
+Optimizing_flags_link := -O3 -flto -fuse-linker-plugin
 Warning_flags    := -pedantic -Wall -Wextra -g #-Werror
 Flags := -std=c++20 $(Warning_flags) $(Sanitizer_flags) $(Supressing_flags)
 Dependency_flags := -MMD -MP
 
 $(Program_name): $(Object_files)
-	$(Compiler) $(Flags) $(Optimizing_flags) $^ -o $@
+	$(Compiler) $(Flags) $(Optimizing_flags_link) $^ -o $@
 
 $(Program_name_opt): $(Source_files) Makefile
-	$(Compiler) $(Flags) $(Source_files) $(Optimizing_flags) -o $@
+	$(Compiler) $(Flags) $(Source_files) $(Optimizing_flags_compile) $(Optimizing_flags_link) -o $@
 
 run:: $(Program_name)
 	./$(Program_name)
@@ -40,7 +41,7 @@ build_opt:: $(Program_name_opt)
 -include $(Dependency)
 
 %.o: %.cpp Makefile
-	$(Compiler) $(Flags) $(Dependency_flags) -c $<
+	$(Compiler) $(Flags) $(Optimizing_flags_compile) $(Dependency_flags) -c $<
 
 clean::
 	rm -f *.s
